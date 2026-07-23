@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLEETWATCH — Predictive Maintenance Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="scan-overlay"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">FW</div>
+    <div class="brand-text">
+      <span class="brand-title">FLEETWATCH</span>
+      <span class="brand-sub">Predictive Maintenance Console</span>
+    </div>
+  </div>
+
+  <div class="conn-status" id="connStatus">
+    <span class="conn-dot" id="connDot"></span>
+    <span id="connLabel">CONNECTING</span>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- KPI strip -->
+  <section class="kpi-strip" aria-label="Fleet summary">
+    <div class="kpi-card">
+      <span class="kpi-label">Total units</span>
+      <span class="kpi-value" id="kpiTotal">—</span>
+    </div>
+    <div class="kpi-card healthy">
+      <span class="kpi-label">Healthy</span>
+      <span class="kpi-value" id="kpiHealthy">—</span>
+    </div>
+    <div class="kpi-card warning">
+      <span class="kpi-label">Warning</span>
+      <span class="kpi-value" id="kpiWarning">—</span>
+    </div>
+    <div class="kpi-card critical">
+      <span class="kpi-label">Critical</span>
+      <span class="kpi-value" id="kpiCritical">—</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Fleet avg risk</span>
+      <span class="kpi-value" id="kpiRisk">—</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Model ROC-AUC</span>
+      <span class="kpi-value" id="kpiAuc">—</span>
+    </div>
+  </section>
+
+  <!-- Equipment grid -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>01 — Equipment fleet</h2>
+      <span class="panel-note">Tap a unit to inspect its live sensor trace</span>
+    </div>
+    <div class="unit-grid" id="unitGrid"><!-- unit cards injected by app.js --></div>
+  </section>
+
+  <!-- Detail: gauge + trend chart -->
+  <section class="panel detail-panel">
+    <div class="panel-head">
+      <h2>02 — Unit inspector</h2>
+      <span class="panel-note" id="detailUnitLabel">select a unit above</span>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-readout">
+        <div class="readout-row">
+          <span class="readout-label">Failure probability</span>
+          <span class="readout-value mono" id="detailFailureProb">—</span>
+        </div>
+        <div class="readout-row">
+          <span class="readout-label">Anomaly score</span>
+          <span class="readout-value mono" id="detailAnomalyScore">—</span>
+        </div>
+        <div class="readout-row">
+          <span class="readout-label">Cycle</span>
+          <span class="readout-value mono" id="detailCycle">—</span>
+        </div>
+        <div class="readout-row">
+          <span class="readout-label">Status</span>
+          <span class="readout-value" id="detailStatus">—</span>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="trendChart" height="220"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- Model metrics -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2>03 — Model evaluation (offline validation)</h2>
+      <span class="panel-note">XGBoost classifier &amp; autoencoder anomaly detector</span>
+    </div>
+    <div class="metrics-grid" id="metricsGrid"><!-- injected --></div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <span>CMAPSS-schema turbofan telemetry · XGBoost + Autoencoder · MLflow-tracked · Optuna-tuned</span>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
