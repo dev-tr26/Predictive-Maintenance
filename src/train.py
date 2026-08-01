@@ -25,7 +25,7 @@ from src.preprocessing import (
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 def prepare_data(data_dir: str, warning_window: int, val_fraction: float, seed: int):
-    train_raw, test_raw, rul_truth = load_cmpass(data_dir, subset="FD003")
+    train_raw, test_raw, rul_truth = load_cmpass(data_dir, subset="FD004")
 
     train_raw = add_rul(train_raw)
     train_raw = clip_rul(train_raw, cap=130)
