@@ -1,0 +1,19 @@
+{
+  "accuracy": 0.8900129143349117,
+  "precision": 0.9658119658119658,
+  "recall": 0.18225806451612903,
+  "f1": 0.3066485753052917,
+  "roc_auc": 0.983048090636668,
+  "pr_auc": 0.8781772248976504,
+  "mcc": 0.39341548526264575,
+  "brier_score": 0.06281701122709561,
+  "true_positives": 113,
+  "true_negatives": 4022,
+  "false_positives": 4,
+  "false_negatives": 507,
+  "false_negative_rate": 0.817741935483871,
+  "mean_reconstruction_error": 0.8721715211868286,
+  "epochs_trained": 200,
+  "final_train_mse": 0.7353306695486553,
+  "final_val_mse": 0.7161104679107666
+}

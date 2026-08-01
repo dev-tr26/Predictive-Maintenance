@@ -14,23 +14,23 @@ from src.models.autoencoder import TorchAutoencoderAnomalyDetector
 
 from src.evaluate import (
     classification_metrics, anomaly_metrics, plot_roc_curve, plot_pr_curve,
-    plot_confusion_matrix, save_metrics_json, best_threshold_by_fbeta,
+    plot_confusion_matrix, save_metrics_json, best_pick_by_threshold_by_fbeta,
 )
 
 from src.preprocessing import (
-    load_cmapss, add_rul, add_failure_label, clip_rul,
-    drop_low_variance_sensors, train_val_split_by_unit,
+    load_cmpass, add_rul, add_failure_label, clip_rul,
+    drop_low_varience_sensors, train_val_split_by_unit,
 )
 
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 def prepare_data(data_dir: str, warning_window: int, val_fraction: float, seed: int):
-    train_raw, test_raw, rul_truth = load_cmapss(data_dir, subset="FD001")
+    train_raw, test_raw, rul_truth = load_cmpass(data_dir, subset="FD003")
 
     train_raw = add_rul(train_raw)
     train_raw = clip_rul(train_raw, cap=130)
     train_raw = add_failure_label(train_raw, warning_window=warning_window)
-    train_raw = drop_low_variance_sensors(train_raw)
+    train_raw = drop_low_varience_sensors(train_raw)
 
     train_units, val_units = train_val_split_by_unit(train_raw, val_fraction, seed)
 
@@ -72,9 +72,9 @@ def objective(trial: optuna.Trial, data: dict) -> float:
         mlflow.log_params(params)
         clf = FailureClassifier(**params)
         clf.fit(data["X_train"], data["y_train"], data["X_val"], data["y_val"])
-        proba = clf.predict_proba(data["X_val"])
-        preds = (proba >= 0.5).astype(int)
-        m = classification_metrics(data["y_val"], preds, proba)
+        prob = clf.predict_prob(data["X_val"])
+        preds = (prob >= 0.5).astype(int)
+        m = classification_metrics(data["y_val"], preds, prob)
         mlflow.log_metrics({k: v for k, v in m.items() if isinstance(v, (int, float))})
 
     trial.set_user_attr("pr_auc", m["pr_auc"])
@@ -120,7 +120,7 @@ def main():
     args = ap.parse_args()
     
     os.makedirs(args.out_dir, exist_ok=True)
-    mlflow.set_tracking_uri(args.mlflow.uri)
+    mlflow.set_tracking_uri(args.mlflow_uri)
     mlflow.set_experiment(args.experiment)
     
     print("Loading + engineering features...")
@@ -146,18 +146,18 @@ def main():
         # Retrain best model
         best_clf = FailureClassifier(**best_params)
         best_clf.fit(data["X_train"], data["y_train"], data["X_val"], data["y_val"])
-        val_proba = best_clf.predict_proba(data["X_val"])
-        decision_threshold = best_threshold_by_fbeta(data["y_val"], val_proba, beta=2.0)
-        val_preds = (val_proba >= decision_threshold).astype(int)
-        final_metrics = classification_metrics(data["y_val"], val_preds, val_proba)
+        val_prob = best_clf.predict_prob(data["X_val"])
+        decision_threshold = best_pick_by_threshold_by_fbeta(data["y_val"], val_prob, beta=2.0)
+        val_preds = (val_prob >= decision_threshold).astype(int)
+        final_metrics = classification_metrics(data["y_val"], val_preds, val_prob)
         final_metrics["decision_threshold"] = decision_threshold
         mlflow.log_metric("decision_threshold", decision_threshold)
         mlflow.log_metrics({f"final_{k}": v for k, v in final_metrics.items()
                              if isinstance(v, (int, float)) and not np.isnan(v)})
 
         os.makedirs("artifacts", exist_ok=True)
-        plot_roc_curve(data["y_val"], val_proba, "artifacts/roc_curve.png")
-        plot_pr_curve(data["y_val"], val_proba, "artifacts/pr_curve.png")
+        plot_roc_curve(data["y_val"], val_prob, "artifacts/roc_curve.png")
+        plot_pr_curve(data["y_val"], val_prob, "artifacts/pr_curve.png")
         plot_confusion_matrix(data["y_val"], val_preds, "artifacts/confusion_matrix.png")
         save_metrics_json(final_metrics, "artifacts/classifier_metrics.json")
         mlflow.log_artifacts("artifacts")

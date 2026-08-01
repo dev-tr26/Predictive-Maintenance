@@ -21,7 +21,7 @@ LOW_VARIANCE_SENSORS = ["sensor_1", "sensor_5", "sensor_6", "sensor_10",
                          "sensor_16", "sensor_18", "sensor_19"]
 
 def _read_space_delimited(path: str) -> pd.DataFrame:
-    df = pd.read_csv(path, sep=r"\s", header=None)
+    df = pd.read_csv(path, sep=r"\s", header=None,engine="python")
     df = df.iloc[:,: len(COLUMNS)]
     df.columns  = COLUMNS 
     return df 
@@ -31,8 +31,8 @@ def load_cmpass(data_dir: str, subset: str = "FD001"):
     train_path = os.path.join(data_dir, f"train_{subset}.txt")
     test_path = os.path.join(data_dir, f"test_{subset}.txt")
     rul_path = os.path.join(data_dir, f"RUL_{subset}.txt")
-    
     train_df = _read_space_delimited(train_path)
+    print(train_df.columns.tolist())
     test_df = _read_space_delimited(test_path) if os.path.exists(test_path) else None
     rul_df = None
     if os.path.exists(rul_path):
@@ -43,8 +43,8 @@ def load_cmpass(data_dir: str, subset: str = "FD001"):
 # Compute Remaining Useful Life (cycles until failure) for training data where failure is implicitly the last recorded cycle of each unit.
 def add_rul(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    max_cycle = df.groupby("unit_number")["times_in_cycles"].transform("max")
-    df["RUL"] = max_cycle - df["time_in_cycles"]
+    max_cycle = df.groupby("unit_number")["time, in cycles"].transform("max")
+    df["RUL"] = max_cycle - df["time, in cycles"]
     return df 
 
 
@@ -76,5 +76,5 @@ def train_val_split_by_unit(df: pd.DataFrame, val_fraction: float=0.2, seed : in
     n_val = max(1, int(len(units) * val_fraction))
     val_units = set(units[:n_val])
     train = df[~df["unit_number"].isin(val_units)].reset_index(drop=True)
-    val = df[~df["unit_number"].isin(val_units)].reset_index(drop=True)
+    val = df[df["unit_number"].isin(val_units)].reset_index(drop=True)
     return train, val    

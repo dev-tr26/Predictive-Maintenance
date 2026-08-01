@@ -1,3 +1,12 @@
 .continue/
 .pt
 .vscode/
+models_1/scaler.joblib
+models_2/scaler.joblib
+models_3/scaler.joblib
+models_1/xgb_classifier.joblib
+models_2/xgb_classifier.joblib
+models_3/xgb_classifier.joblib
+models_1/autoencoder.pt
+models_2/autoencoder.pt
+models_3/autoencoder.pt

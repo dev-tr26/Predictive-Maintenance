@@ -3,7 +3,7 @@
 from __future__ import annotations
 import numpy as np
 import joblib
-from xgboost import XGBClasssifier 
+from xgboost import XGBClassifier 
 
 DEFAULT_PARAMS = dict(
     n_estimators=300,
@@ -23,7 +23,7 @@ DEFAULT_PARAMS = dict(
 class FailureClassifier:
     def __init__(self, **params):
         self.params = {**DEFAULT_PARAMS, **params}
-        self.model = XGBClasssifier(**self.params)
+        self.model = XGBClassifier(**self.params)
     
     def fit(self, X_train,y_train, X_val=None, y_val=None):
         eval_set = [(X_val, y_val)] if X_val is not None else None
@@ -31,7 +31,7 @@ class FailureClassifier:
         return self
     
     def predict_prob(self, X)->np.ndarray:
-        return self.model.predict_prob(X)[:,1]
+        return self.model.predict_proba(X)[:,1]
     
     def predict(self,X, threshold: float = 0.5) -> np.ndarray:
         return (self.predict_prob(X) >= threshold).astype(int)

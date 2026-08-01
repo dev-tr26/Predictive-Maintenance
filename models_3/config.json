@@ -1,0 +1,16 @@
+{
+  "warning_window": 30,
+  "best_params": {
+    "n_estimators": 150,
+    "max_depth": 3,
+    "learning_rate": 0.03288059728616748,
+    "subsample": 0.6512724702232536,
+    "colsample_bytree": 0.7033211942670934,
+    "min_child_weight": 9,
+    "reg_lambda": 4.430305275183904,
+    "reg_alpha": 1.2108754810183777,
+    "scale_pos_weight": 5.35713976810175
+  },
+  "decision_threshold": 0.2034001499414444,
+  "mlflow_run_id": "c124c2d978c64172b750341fae2e27b4"
+}

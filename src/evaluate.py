@@ -42,7 +42,7 @@ def classification_metrics(y_true,y_pred,y_prob) -> dict:
     return metrics
     
 # y_true_binary: ground-truth failure-window label used only for offline validation of the unsupervised detector (not used in training).
-def anamoly_metrics(y_true_binary, anomaly_flags, scores) -> dict:
+def anomaly_metrics(y_true_binary, anomaly_flags, scores) -> dict:
     metrics = classification_metrics(y_true_binary, anomaly_flags,scores / (scores.max() + 1e-9))
     metrics["mean_reconstruction_error"] = float(np.mean(scores))
     return metrics
@@ -62,9 +62,9 @@ def plot_roc_curve(y_true, y_prob, out_path: str):
     plt.close()
     
 
-def plot_pr_curve(y_true, y_proba, out_path: str):
-    precision, recall, _ = precision_recall_curve(y_true, y_proba)
-    ap = average_precision_score(y_true, y_proba)
+def plot_pr_curve(y_true, y_prob, out_path: str):
+    precision, recall, _ = precision_recall_curve(y_true, y_prob)
+    ap = average_precision_score(y_true, y_prob)
     plt.figure(figsize=(5, 5))
     plt.plot(recall, precision, label=f"PR (AP={ap:.3f})")
     plt.xlabel("Recall")

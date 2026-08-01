@@ -66,7 +66,7 @@ class TorchAutoencoderAnomalyDetector:
         train_t = torch.from_numpy(X_train).to(self.device)
         val_t = torch.from_numpy(X_val).to(self.device)
         
-        self.model = _AutoencoderNet(self.input_dim__, self.hidden_dims, self.dropout).to(self.device)
+        self.model = _AutoencoderNet(self.input_dim_, self.hidden_dims, self.dropout).to(self.device)
         optimizer = torch.optim.Adam(self.model.parameters(), 1)
         criterion = nn.MSELoss()
 

@@ -17,7 +17,7 @@ ROLLING_WINDOWS = (5, 15)
 
 def add_rolling_features(df: pd.DataFrame, sensor_cols=None, windows=ROLLING_WINDOWS) -> pd.DataFrame:
     sensor_cols = sensor_cols or [c for c in SENSOR_COLS if c in df.columns]
-    df = df.sort_values(["unit_number", "time_in_cycles"]).copy()
+    df = df.sort_values(["unit_number", "time, in cycles"]).copy()
     grouped = df.groupby("unit_number", group_keys=False)
     
     for col in sensor_cols:
@@ -40,10 +40,10 @@ def add_degradation_slope(df: pd.DataFrame, sensor_cols=None) -> pd.DataFrame:
     the history seen so far for that unit -- a cheap proxy for 'how fast is
     this sensor trending' that's far more stable than a raw first difference."""
     sensor_cols = sensor_cols or [c for c in SENSOR_COLS if c in df.columns]
-    df = df.sort_values(["unit_number", "time_in_cycles"]).copy()
+    df = df.sort_values(["unit_number", "time, in cycles"]).copy()
 
     def _slope(group: pd.DataFrame) -> pd.DataFrame:
-        x = group["time_in_cycles"].to_numpy(dtype=float)
+        x = group["time, in cycles"].to_numpy(dtype=float)
         out = {}
         for col in sensor_cols:
             y = group[col].to_numpy(dtype=float)
@@ -73,7 +73,7 @@ def build_feature_matrix(df: pd.DataFrame, sensor_cols=None, fast: bool = True) 
 
 
 def get_feature_columns(df: pd.DataFrame) -> list[str]:
-    exclude = {"unit_number", "time_in_cycles", "RUL", "failure_within_window"}
+    exclude = {"unit_number", "time, in cycles", "RUL", "failure_within_window"}
     return [c for c in df.columns if c not in exclude and pd.api.types.is_numeric_dtype(df[c])]
 
 
