@@ -109,7 +109,8 @@ def run_autoencoder_training(data: dict, warning_window: int, out_dir: str):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data_dir", default="./data")
-    
+    ap.add_argument("--subset", default="FD001", choices=["FD001", "FD002", "FD003", "FD004"],
+                     help="Which CMAPSS subset to train on")
     ap.add_argument("--out-dir", default="./models")
     ap.add_argument("--n-trials", type=int, default=20)
     ap.add_argument("--warning-window", type=int, default=30)
@@ -178,6 +179,7 @@ def main():
             json.dump(data["feature_cols"], f)
         with open(os.path.join(args.out_dir, "config.json"), "w") as f:
             json.dump({"warning_window": args.warning_window,
+                       "subset": args.subset,
                        "best_params": best_params,
                        "decision_threshold": decision_threshold,
                        "mlflow_run_id": parent_run.info.run_id}, f, indent=2)

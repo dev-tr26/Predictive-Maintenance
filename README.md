@@ -171,3 +171,12 @@ Shows fleet-wide KPIs, a gauge card per equipment unit (radial dial +
 status pill), a live trend chart (risk score / failure probability) for
 whichever unit you select, and the latest offline model-evaluation metrics.
 
+- to use different models from different test_data dir 
+- change models_name here : models_1 ,models_2, models_3, models_4  
+- it will load the corresponding test_FD00N subset ( N = 1,2,3,4)
+- it will stream the data and inference will be done by loading the respective model.
+
+```
+MODEL_DIR = os.environ.get("MODEL_DIR", "./models_3")
+ARTIFACTS_DIR = os.environ.get("ARTIFACTS_DIR", "./artifacts_3")
+```

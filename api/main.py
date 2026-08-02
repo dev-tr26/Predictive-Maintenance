@@ -25,27 +25,45 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-
+from api.simulator import build_fleet_simulator
 from api.schemas import SensorReading, PredictionResponse, HealthResponse, FleetSummary
-from api.inference import engine
+# from api.inference import engine
 
-MODEL_DIR = os.environ.get("MODEL_DIR", "./models")
-ARTIFACTS_DIR = os.environ.get("ARTIFACTS_DIR", "./artifacts")
+from api.inference import PredictiveMaintenanceEngine
+
+
+MODEL_DIR = os.environ.get("MODEL_DIR", "./models_3")
+ARTIFACTS_DIR = os.environ.get("ARTIFACTS_DIR", "./artifacts_3")
+DATA_DIR = os.environ.get("DATA_DIR", "./data")
 TICK_SECONDS = float(os.environ.get("SIM_TICK_SECONDS", "1.5"))
 HISTORY_LEN = 200
 
-from contextlib import asynccontextmanager
+engine = PredictiveMaintenanceEngine(model_dir=MODEL_DIR)
 
-from api.simulator import FleetSimulator
+
+from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global fleet_sim
     if os.path.exists(os.path.join(MODEL_DIR, "xgb_classifier.joblib")):
         engine.load()
         print(f"Models loaded from {MODEL_DIR}")
     else:
         print(f"WARNING: no trained models found in {MODEL_DIR}. "
               f"Run `python -m src.train` first. API will return 503 on /predict.")
+    
+    
+    # Stream whichever subset the loaded model was actually trained on
+    # (config.json's "subset" field, written by src/train.py --subset), so a
+    # model trained on FD002 gets scored against real FD002 test data, etc.
+    # Falls back to FD001 if config predates the --subset flag.
+    subset = engine.config.get("subset", "FD001") if engine.loaded else "FD001"
+    fleet_sim = build_fleet_simulator(data_dir=DATA_DIR, subset=subset, n_units=6)
+    print(f"Fleet simulator streaming real '{subset}' data "
+          f"({fleet_sim.info().get('source_split', 'n/a')} split)")
+
+    
     for uid in fleet_sim.unit_ids:
         history[uid] = deque(maxlen=HISTORY_LEN)
     task = asyncio.create_task(simulation_loop())
@@ -67,7 +85,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-fleet_sim = FleetSimulator(n_units=6)
+fleet_sim = None  # constructed in lifespan(), once we know which subset the model was trained on
 history: Dict[str, deque] = {}
 connected_clients: List[WebSocket] = []
 latest_predictions: Dict[str, dict] = {}
@@ -112,6 +130,8 @@ def health():
         models_loaded=engine.loaded,
         mlflow_run_id=engine.config.get("mlflow_run_id") if engine.loaded else None,
         warning_window=engine.config.get("warning_window") if engine.loaded else None,
+        dataset_subset=fleet_sim.subset if fleet_sim else None,
+        dataset_source_split=fleet_sim.source_split if fleet_sim else None,
     )
     
 
@@ -154,12 +174,20 @@ def fleet_summary():
         avg_risk_score=round(float(np.mean([p.get("risk_score", 0.0) for p in preds])), 4),
     )
     
-    
+
 @app.get("/api/fleet/units")
 def fleet_units():
     return {"units": list(latest_predictions.values())}
 
 
+@app.get("/api/fleet/info")
+def fleet_units():
+    if fleet_sim is None:
+        raise HTTPException(503, "Fleet simulator not initialized.")
+    return fleet_sim.info()
+
+
+# Which CMAPSS subset/split is streaming, and which real unit_number each dashboard slot is replaying -- useful for confirming the model and the streamed data actually match.
 @app.get("/api/fleet/history/{unit_id}")
 def fleet_history(unit_id: str):
     if unit_id not in history:
@@ -179,7 +207,7 @@ def model_metrics():
         raise HTTPException(404, "No evaluation metrics found. Run training first.")
     return out
 
-@app.websocket("ws/live")
+@app.websocket("/ws/live")
 async def websocket_live(ws: WebSocket):
     await ws.accept()
     connected_clients.append(ws)

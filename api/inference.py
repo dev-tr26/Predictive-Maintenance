@@ -13,8 +13,8 @@ import numpy as np
 import pandas as pd
 
 from src.models.xgb_classifier import FailureClassifier
-from src.models.autoencoder import AutoencoderAnomalyDetector
-from src.preprocessing import SENSOR_COLS, SETTING_COLS, LOW_VARIANCE_SENSORS
+from src.models.autoencoder import TorchAutoencoderAnomalyDetector
+from src.preprocessing import SENSOR_COLS, SETTINGS_COLS, LOW_VARIANCE_SENSORS, SETTINGS_COLS
 from src.feature_engineering import ROLLING_WINDOWS
 
 ACTIVE_SENSORS = [c for c in SENSOR_COLS if c not in LOW_VARIANCE_SENSORS]
@@ -25,8 +25,8 @@ class UnitStateBuffer:
         self.buffers: dict[str, deque] = defaultdict(lambda: deque(maxlen=maxlen))
 
     def push_and_featurize(self, unit_id: str, reading: dict, cycle: int) -> pd.DataFrame:
-        row = {"unit_number": unit_id, "time_in_cycles": cycle}
-        row.update({c: reading.get(c, 0.0) for c in SETTING_COLS})
+        row = {"unit_number": unit_id, "time, in cycles": cycle}
+        row.update({c: reading.get(c, 0.0) for c in SETTINGS_COLS})
         row.update({c: reading.get(c, 0.0) for c in SENSOR_COLS})
         self.buffers[unit_id].append(row)
 
@@ -39,16 +39,16 @@ class UnitStateBuffer:
                 feat_row[f"{col}_rstd_{w}"] = series.rolling(w, min_periods=1).std().fillna(0.0).iloc[-1]
             feat_row[f"{col}_ewma"] = series.ewm(span=10, adjust=False).mean().iloc[-1]
             feat_row[f"{col}_diff1"] = series.diff().fillna(0.0).iloc[-1]
-        for col in SETTING_COLS + ACTIVE_SENSORS:
+        for col in SETTINGS_COLS + ACTIVE_SENSORS:
             feat_row[col] = hist[col].iloc[-1]
         return pd.DataFrame([feat_row])
 
 
 class PredictiveMaintenanceEngine:
-    def __init__(self, model_dir: str = "./models"):
+    def __init__(self, model_dir: str):
         self.model_dir = model_dir
         self.classifier: FailureClassifier | None = None
-        self.autoencoder: AutoencoderAnomalyDetector | None = None
+        self.autoencoder: TorchAutoencoderAnomalyDetector | None = None
         self.scaler = None
         self.feature_cols: list[str] = []
         self.config: dict = {}
@@ -58,12 +58,13 @@ class PredictiveMaintenanceEngine:
     def load(self):
         import joblib
         self.classifier = FailureClassifier.load(os.path.join(self.model_dir, "xgb_classifier.joblib"))
-        self.autoencoder = AutoencoderAnomalyDetector.load(os.path.join(self.model_dir, "autoencoder.joblib"))
+        self.autoencoder = TorchAutoencoderAnomalyDetector.load(os.path.join(self.model_dir, "autoencoder.pt"))
         self.scaler = joblib.load(os.path.join(self.model_dir, "scaler.joblib"))
         with open(os.path.join(self.model_dir, "feature_columns.json")) as f:
             self.feature_cols = json.load(f)
         with open(os.path.join(self.model_dir, "config.json")) as f:
             self.config = json.load(f)
+        print(f"Loaded models from {self.model_dir}. Classifier threshold={self.config.get('decision_threshold', 0.5)}")
         self.loaded = True
         return self
     
@@ -96,7 +97,7 @@ class PredictiveMaintenanceEngine:
         return {
             "unit_id": unit_id,
             "cycle": cycle,
-            "failure_probability": round(failure_prob, 4),
+            "failure_probbility": round(failure_prob, 4),
             "failure_predicted": bool(failure_flag),
             "anomaly_score": round(recon_error, 4),
             "anomaly_detected": bool(anomaly_flag),
@@ -105,3 +106,7 @@ class PredictiveMaintenanceEngine:
             "status": status,
             "decision_threshold": threshold,
         }
+
+
+# Global inference engine instance
+# engine = PredictiveMaintenanceEngine()

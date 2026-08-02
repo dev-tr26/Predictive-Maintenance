@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Optional
 from pydantic import BaseModel, Field
 
+
 class SensorReading(BaseModel):
     unit_id: str = Field(..., description="Equipment/unit identifier, e.g. 'turbine-07'")
     cycle: int = Field(..., ge=0, description="Operating cycle / timestep counter")
@@ -49,6 +50,8 @@ class HealthResponse(BaseModel):
     models_loaded: bool
     mlflow_run_id: Optional[str] = None
     warning_window: Optional[int] = None
+    dataset_subset: Optional[str] = None
+    dataset_source_split: Optional[str] = None
 
 
 class FleetSummary(BaseModel):

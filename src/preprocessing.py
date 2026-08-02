@@ -15,7 +15,7 @@ COLUMNS = (
 )
 
 SENSOR_COLS = [f"sensor_{i}" for i in range(1, N_SENSORS + 1)]
-SETTINGS_COLS = [f"op_settings_{i}" for i in range(1, N_SETTINGS + 1)] 
+SETTINGS_COLS = [f"op_setting_{i}" for i in range(1, N_SETTINGS + 1)] 
 
 LOW_VARIANCE_SENSORS = ["sensor_1", "sensor_5", "sensor_6", "sensor_10",
                          "sensor_16", "sensor_18", "sensor_19"]
@@ -27,7 +27,7 @@ def _read_space_delimited(path: str) -> pd.DataFrame:
     return df 
 
 
-def load_cmpass(data_dir: str, subset: str = "FD001"):
+def load_cmpass(data_dir: str, subset: str):
     train_path = os.path.join(data_dir, f"train_{subset}.txt")
     test_path = os.path.join(data_dir, f"test_{subset}.txt")
     rul_path = os.path.join(data_dir, f"RUL_{subset}.txt")
