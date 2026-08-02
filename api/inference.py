@@ -97,7 +97,7 @@ class PredictiveMaintenanceEngine:
         return {
             "unit_id": unit_id,
             "cycle": cycle,
-            "failure_probbility": round(failure_prob, 4),
+            "failure_probability": round(failure_prob, 4),
             "failure_predicted": bool(failure_flag),
             "anomaly_score": round(recon_error, 4),
             "anomaly_detected": bool(anomaly_flag),
@@ -107,6 +107,14 @@ class PredictiveMaintenanceEngine:
             "decision_threshold": threshold,
         }
 
-
+    # add runtime model-switching method to PredictiveMaintenanceEngine
+    def reload(self, model_dir: str):
+        """Swap to a different trained model/subset without restarting the process."""
+        self.model_dir = model_dir
+        self.buffer = UnitStateBuffer()  # old buffer belongs to a different scaler/feature schema
+        self.loaded = False
+        self.load()
+        
+        
 # Global inference engine instance
 # engine = PredictiveMaintenanceEngine()

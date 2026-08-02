@@ -24,8 +24,8 @@ from src.preprocessing import (
 
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
-def prepare_data(data_dir: str, warning_window: int, val_fraction: float, seed: int):
-    train_raw, test_raw, rul_truth = load_cmpass(data_dir, subset="FD004")
+def prepare_data(data_dir: str,subset: str, warning_window: int, val_fraction: float, seed: int):
+    train_raw, test_raw, rul_truth = load_cmpass(data_dir, subset=subset)
 
     train_raw = add_rul(train_raw)
     train_raw = clip_rul(train_raw, cap=130)
@@ -72,7 +72,7 @@ def objective(trial: optuna.Trial, data: dict) -> float:
         mlflow.log_params(params)
         clf = FailureClassifier(**params)
         clf.fit(data["X_train"], data["y_train"], data["X_val"], data["y_val"])
-        prob = clf.predict_prob(data["X_val"])
+        prob = clf.predict_proba(data["X_val"])
         preds = (prob >= 0.5).astype(int)
         m = classification_metrics(data["y_val"], preds, prob)
         mlflow.log_metrics({k: v for k, v in m.items() if isinstance(v, (int, float))})
@@ -109,6 +109,7 @@ def run_autoencoder_training(data: dict, warning_window: int, out_dir: str):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data_dir", default="./data")
+    ap.add_argument("--artifacts-dir", default="./artifacts")
     ap.add_argument("--subset", default="FD001", choices=["FD001", "FD002", "FD003", "FD004"],
                      help="Which CMAPSS subset to train on")
     ap.add_argument("--out-dir", default="./models")
@@ -125,7 +126,7 @@ def main():
     mlflow.set_experiment(args.experiment)
     
     print("Loading + engineering features...")
-    data = prepare_data(args.data_dir, args.warning_window, args.val_fraction, args.seed)
+    data = prepare_data(args.data_dir, args.subset, args.warning_window, args.val_fraction, args.seed)
     print(f"Train rows: {len(data['y_train'])} | Val rows: {len(data['y_val'])} "
           f"| Features: {len(data['feature_cols'])}")
     

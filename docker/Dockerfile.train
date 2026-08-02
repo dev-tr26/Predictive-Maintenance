@@ -1,0 +1,26 @@
+# Training container: generates data (if absent), runs the MLflow+Optuna
+# training pipeline, and writes serialized models to /app/models.
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY src/ ./src/
+COPY data/ ./data/
+
+ENV PYTHONUNBUFFERED=1
+
+# usage:
+#        docker build =f docker/Dockerfile.train -t pdm-train .
+#        docker run - v $(pwd)/models:/app/models -v $(pwd)/artifacts:/app/artifacts \
+#                   - v $(pwd)/mlflow.db:/app/mlflow.db pdm-train --ntrials 25
+
+ENTRYPOINT ["python", "-m" , "src.train"]
+CMD ["--data-dir", "./data", "--n-trials", "20"]

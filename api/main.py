@@ -28,6 +28,7 @@ from fastapi.responses import FileResponse
 from api.simulator import build_fleet_simulator
 from api.schemas import SensorReading, PredictionResponse, HealthResponse, FleetSummary
 # from api.inference import engine
+import glob
 
 from api.inference import PredictiveMaintenanceEngine
 
@@ -45,7 +46,10 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global fleet_sim
+    global fleet_sim, MODEL_REGISTRY, ARTIFACTS_DIR
+    MODEL_REGISTRY = discover_model_registry(".")
+    print(f"Discovered trained subsets: {list(MODEL_REGISTRY.keys())}")
+
     if os.path.exists(os.path.join(MODEL_DIR, "xgb_classifier.joblib")):
         engine.load()
         print(f"Models loaded from {MODEL_DIR}")
@@ -91,23 +95,50 @@ connected_clients: List[WebSocket] = []
 latest_predictions: Dict[str, dict] = {}
 
 
+def discover_model_registry(base_dir: str = ".") -> dict[str, dict]:
+    """Maps models_N -> FDN directly from folder naming, not config.json."""
+    registry = {}
+    for model_dir in sorted(glob.glob(os.path.join(base_dir, "models_*"))):
+        idx = model_dir.rsplit("_", 1)[-1]
+        subset = SUBSET_BY_INDEX.get(idx)
+        if not subset:
+            print(f"[registry] skip {model_dir}: unrecognized suffix '{idx}'")
+            continue
+        if not os.path.exists(os.path.join(model_dir, "xgb_classifier.joblib")):
+            print(f"[registry] skip {model_dir}: no xgb_classifier.joblib inside")
+            continue
+        artifacts_dir = os.path.join(base_dir, f"artifacts_{idx}")
+        registry[subset] = {
+            "model_dir": model_dir,
+            "artifacts_dir": artifacts_dir if os.path.isdir(artifacts_dir) else ARTIFACTS_DIR,
+        }
+    print(f"[registry] resolved: {registry}")
+    return registry
+
+MODEL_REGISTRY: dict[str, dict] = {}
+switch_lock = asyncio.Lock()
+
+SUBSET_BY_INDEX = {"1": "FD001", "2": "FD002", "3": "FD003", "4": "FD004"}
+
+
 # bg tasks : virtual fleet + scores each unit keeps rolling history for dashboard pushes updates to all connected websocket clients
 # instead of kafka / rabbitmq
 async def simulation_loop():
     while True:
         if engine.loaded:
-            batch = []
-            for uid in fleet_sim.unit_ids:
-                reading, cycle = fleet_sim.step(uid)
-                try:
-                    pred = engine.score_reading(uid, reading, cycle)
-                except Exception as e:
-                    pred = {"unit_id": uid, "cycle": cycle, "error": str(e)}
-                pred["timestamp"] = time.time()
-                pred["equipment_type"] = fleet_sim.equipment_type[uid]
-                latest_predictions[uid] = pred
-                history[uid].append(pred)
-                batch.append(pred)
+            async with switch_lock:
+                batch = []
+                for uid in fleet_sim.unit_ids:
+                    reading, cycle = fleet_sim.step(uid)
+                    try:
+                        pred = engine.score_reading(uid, reading, cycle)
+                    except Exception as e:
+                        pred = {"unit_id": uid, "cycle": cycle, "error": str(e)}
+                    pred["timestamp"] = time.time()
+                    pred["equipment_type"] = fleet_sim.equipment_type[uid]
+                    latest_predictions[uid] = pred
+                    history[uid].append(pred)
+                    batch.append(pred)
 
             payload = json.dumps({"type": "tick", "predictions": batch})
             stale = []
@@ -145,6 +176,32 @@ def predict(reading: SensorReading):
     result = engine.score_reading(unit_id, payload, cycle)
     return PredictionResponse(**result)
 
+# new endpoints — dataset discovery + runtime switch
+@app.get("/api/dataset/available")
+def dataset_available():
+    return {"available_subsets": list(MODEL_REGISTRY.keys()),
+            "current_subset": fleet_sim.subset if fleet_sim else None,
+            "registry_debug": MODEL_REGISTRY}
+    
+
+@app.post("/api/dataset/select")
+async def dataset_select(subset: str):
+    global fleet_sim, ARTIFACTS_DIR
+    if subset not in MODEL_REGISTRY:
+        raise HTTPException(404, f"No trained model for '{subset}'. Available: {list(MODEL_REGISTRY.keys())}")
+    async with switch_lock:
+        entry = MODEL_REGISTRY[subset]
+        engine.reload(entry["model_dir"])
+        ARTIFACTS_DIR = entry["artifacts_dir"]
+        fleet_sim = build_fleet_simulator(data_dir=DATA_DIR, subset=subset, n_units=6)
+        history.clear()
+        latest_predictions.clear()
+        for uid in fleet_sim.unit_ids:
+            history[uid] = deque(maxlen=HISTORY_LEN)
+    return {"status": "switched", "subset": subset, "model_dir": entry["model_dir"]}
+
+
+
 
 @app.post("/api/predict/batch", response_model=List[PredictionResponse])
 def predict_batch(readings: List[SensorReading]):
@@ -181,7 +238,7 @@ def fleet_units():
 
 
 @app.get("/api/fleet/info")
-def fleet_units():
+def fleet_info():
     if fleet_sim is None:
         raise HTTPException(503, "Fleet simulator not initialized.")
     return fleet_sim.info()

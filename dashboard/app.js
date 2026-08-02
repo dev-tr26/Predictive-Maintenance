@@ -207,6 +207,35 @@ async function loadModelMetrics(){
   }catch(e){ /* metrics not trained yet */ }
 }
 
+async function loadDatasetOptions(){
+  try {
+    const res = await fetch(`${API_BASE}/api/dataset/available`);
+    if(!res.ok){ console.error("dataset/available failed:", res.status); return; }
+    const data = await res.json();
+    console.log("available subsets:", data.available_subsets);
+    const sel = document.getElementById("datasetSelect");
+    if(!sel){ console.error("datasetSelect element not found in DOM"); return; }
+    if(data.available_subsets.length === 0){
+      sel.innerHTML = `<option>no trained models found</option>`;
+      return;
+    }
+    sel.innerHTML = data.available_subsets.map(s =>
+      `<option value="${s}" ${s === data.current_subset ? "selected" : ""}>${s}</option>`).join("");
+  } catch(e){ console.error("loadDatasetOptions error:", e); }
+}
+
+async function onDatasetChange(e){
+  const res = await fetch(`${API_BASE}/api/dataset/select?subset=${e.target.value}`, { method: "POST" });
+  if(!res.ok){ console.error("dataset/select failed:", res.status, await res.text()); return; }
+  unitState = {}; unitHistory = {}; selectedUnit = null;
+  if(trendChart){ trendChart.destroy(); trendChart = null; }
+  renderAll();
+}
+
+document.getElementById("datasetSelect")?.addEventListener("change", onDatasetChange);
+
+
+
 function metricBlocks(metrics, keys){
   return keys.filter(k => k in metrics).map(k => `
     <div class="metric-block">
@@ -219,3 +248,4 @@ setConnStatus("connecting");
 connectWebSocket();
 loadModelMetrics();
 setInterval(loadModelMetrics, 60000);
+loadDatasetOptions();
