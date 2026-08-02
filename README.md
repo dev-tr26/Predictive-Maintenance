@@ -29,6 +29,10 @@ Test trajectories: 249
 Conditions: SIX 
 Fault Modes: TWO (HPC Degradation, Fan Degradation)
 ```
+---
+<img width="1919" height="1016" alt="image" src="https://github.com/user-attachments/assets/2d56ada6-a4a9-4b0e-856d-448121960f4c" />
+----
+<img width="1324" height="891" alt="image" src="https://github.com/user-attachments/assets/4aafcb9b-097f-48c4-860b-cd20e049f096" />
 
 ------
 
