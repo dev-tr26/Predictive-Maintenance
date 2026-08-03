@@ -8,8 +8,14 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ../models:/app/models
-      - ../artifacts:/app/artifacts
+      - ../models_1:/app/models_1
+      - ../models_2:/app/models_2
+      - ../models_3:/app/models_3
+      - ../models_4:/app/models_4
+      - ../artifacts_1:/app/artifacts_1
+      - ../artifacts_2:/app/artifacts_2
+      - ../artifacts_3:/app/artifacts_3
+      - ../artifacts_4:/app/artifacts_4
     environment:
       - SIM_TICK_SECONDS=1.5
     restart: unless-stopped
@@ -24,4 +30,19 @@ services:
     image: python:3.12-slim
     working_dir: /app
     volumes:
-      - 
+      - ..:/app
+    ports:
+     - "5000:5000"
+    command: >
+      bash -c "pip install --no-cache-dir mlflow==3.14.0 && 
+               mlflow ui --backend-store-uri sqlite:///mlflow.db --host 0.0.0.0 --port 5000"
+    restart: unless-stopped
+
+# Usage:
+#   1. Train models first (writes ./models, ./artifacts, ./mlflow.db):
+#        python -m src.train --data-dir ./data --n-trials 25
+#   2. Bring the stack up:
+#        docker compose -f docker/docker-compose.yml up --build
+#   3. Dashboard:      http://localhost:8000
+#      API docs:       http://localhost:8000/docs
+#      MLflow tracking: http://localhost:5000

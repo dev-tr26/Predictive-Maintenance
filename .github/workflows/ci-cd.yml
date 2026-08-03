@@ -1,0 +1,46 @@
+name: CI-CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: pytest tests/ -v
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - run: docker build -f docker/Dockerfile.api -t ${{ secrets.DOCKERHUB_USERNAME }}/pdm-api:latest .
+      - run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/pdm-api:latest
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/pdm-api:latest
+            docker stop pdm-api || true
+            docker rm pdm-api || true
+            docker run -d --name pdm-api -p 8000:8000 \
+              -v ~/pdm/models_1:/app/models_1 -v ~/pdm/models_2:/app/models_2 \
+              -v ~/pdm/models_3:/app/models_3 -v ~/pdm/models_4:/app/models_4 \
+              -v ~/pdm/artifacts_1:/app/artifacts_1 -v ~/pdm/artifacts_2:/app/artifacts_2 \
+              -v ~/pdm/artifacts_3:/app/artifacts_3 -v ~/pdm/artifacts_4:/app/artifacts_4 \
+              ${{ secrets.DOCKERHUB_USERNAME }}/pdm-api:latest

@@ -16,11 +16,18 @@ COPY dashboard/ ./dashboard/
 COPY data/ ./data/
 
 # trained model artifacts (run python -m src.train beforehand or mount a vol at /app/models at runtime)
-COPY models/ ./models/
-COPY artifacts/ ./artifacts/
+COPY models_1/ ./models_1/
+COPY models_2/ ./models_2/
+COPY models_3/ ./models_3/
+COPY models_4/ ./models_4/
+COPY artifacts_1/ ./artifacts_1/
+COPY artifacts_2/ ./artifacts_2/
+COPY artifacts_3/ ./artifacts_3/
+COPY artifacts_4/ ./artifacts_4/
+
 
 ENV MODEL_DIR=/app/models \
-    ARTIFACT_DIR=/app/artifacts \
+    ARTIFACT_DIR=/app/artifacts_1\
     DASHBOARD_DIR=/app/dashboard \
     SIM_TICK_SECONDS=1.5 \
     PYTHONUNBUFFERED=1
